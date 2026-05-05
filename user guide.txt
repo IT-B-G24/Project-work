@@ -1,0 +1,10 @@
+RUN in terminal 1
+python ai_server.py
+
+
+Run in terminal 2
+python iot_data_simulator.py
+
+
+browser(open in browser) sever
+http://127.0.0.1:5000

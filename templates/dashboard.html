@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini-Grid AI Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            background: #111827;
+            color: white;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0b1120;
+            color: #00ffff;
+            padding: 20px 30px;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .top-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            color: white;
+        }
+
+        .download-btn { background: #2563eb; }
+        .logout-btn { background: #dc2626; }
+
+        .dashboard-info {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 20px;
+            gap: 20px;
+        }
+
+        .info-box {
+            background: #1f2937;
+            padding: 20px;
+            border-radius: 14px;
+            min-width: 220px;
+            text-align: center;
+            box-shadow: 0 0 12px rgba(0,0,0,0.3);
+        }
+
+        .info-box h3 {
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        #alert {
+            padding: 15px;
+            margin: 10px auto;
+            width: 85%;
+            border-radius: 10px;
+            font-size: 22px;
+            text-align: center;
+            font-weight: bold;
+            display: block;
+        }
+
+        .fault {
+            background: #b91c1c;
+            color: white;
+        }
+
+        .normal {
+            background: #15803d;
+            color: white;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px;
+            gap: 20px;
+        }
+
+        .card {
+            background: #1f2937;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.35);
+            flex: 1 1 300px;
+            transition: 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+        }
+
+        .safe {
+            border-left: 6px solid #22c55e;
+        }
+
+        .warning {
+            border-left: 6px solid #facc15;
+        }
+
+        .danger {
+            border-left: 6px solid #ef4444;
+        }
+
+        canvas {
+            max-width: 100%;
+            background: #111827;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        h2 {
+            margin-bottom: 12px;
+            color: #00ffff;
+        }
+
+        .sensor-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>⚡ AI-Powered Fault detection in Mini-Grid Renewable System Dashboard</div>
+    <div class="top-right">
+        <a href="/download" class="btn download-btn">Download CSV</a>
+        <a href="/logout" class="btn logout-btn">Logout</a>
+    </div>
+</header>
+
+<div class="dashboard-info">
+    <div class="info-box">
+        <h3>System Time</h3>
+        <p id="system_time">--</p>
+    </div>
+    <div class="info-box">
+        <h3>AI Prediction</h3>
+        <p id="prediction_badge">--</p>
+    </div>
+    <div class="info-box">
+        <h3>Fault Type</h3>
+        <p id="fault_type">--</p>
+    </div>
+    <div class="info-box">
+        <h3>System Health</h3>
+        <p id="health_score">--%</p>
+    </div>
+    <div class="info-box">
+        <h3>Voice Alert</h3>
+        <p id="voice_status">ON</p>
+        <button onclick="toggleVoice()" style="margin-top:10px; padding:10px 15px; border:none; border-radius:8px; background:#2563eb; color:white; font-weight:bold; cursor:pointer;">
+            Toggle Voice
+        </button>
+    </div>
+</div>
+
+<div id="alert">Loading...</div>
+
+<audio id="alarmSound" src="/static/alarm.mp3" preload="auto"></audio>
+
+<div class="container">
+    <div class="card" id="card_panel_voltage">
+        <h2>Panel Voltage</h2>
+        <p class="sensor-value"><span id="panel_voltage">0</span> V</p>
+        <canvas id="chartPanelVoltage"></canvas>
+    </div>
+
+    <div class="card" id="card_panel_current">
+        <h2>Panel Current</h2>
+        <p class="sensor-value"><span id="panel_current">0</span> A</p>
+        <canvas id="chartPanelCurrent"></canvas>
+    </div>
+
+    <div class="card" id="card_battery_voltage">
+        <h2>Battery Voltage</h2>
+        <p class="sensor-value"><span id="battery_voltage">0</span> V</p>
+        <canvas id="chartBatteryVoltage"></canvas>
+    </div>
+
+    <div class="card" id="card_inverter_temp">
+        <h2>Inverter Temperature</h2>
+        <p class="sensor-value"><span id="inverter_temp">0</span> °C</p>
+        <canvas id="chartInverterTemp"></canvas>
+    </div>
+
+    <div class="card" id="card_load_current">
+        <h2>Load Current</h2>
+        <p class="sensor-value"><span id="load_current">0</span> A</p>
+        <canvas id="chartLoadCurrent"></canvas>
+    </div>
+
+    <div class="card" style="flex-basis:95%;">
+        <h2>Historical Trend (Last 20 Readings)</h2>
+        <canvas id="chartHistorical"></canvas>
+    </div>
+</div>
+
+<script>
+let chartConfig = {};
+let lastFaultSpoken = "";
+let voiceEnabled = true;
+
+function speakAlert(message) {
+    if (!voiceEnabled) return;
+
+    window.speechSynthesis.cancel(); // stop previous speech
+    const speech = new SpeechSynthesisUtterance(message);
+    speech.lang = "en-US";
+    speech.rate = 1;
+    speech.pitch = 1;
+    window.speechSynthesis.speak(speech);
+}
+
+function playAlarm() {
+    if (!voiceEnabled) return;
+
+    const alarm = document.getElementById("alarmSound");
+    if (alarm) {
+        alarm.currentTime = 0;
+        alarm.play().catch(err => console.log("Alarm blocked:", err));
+    }
+}
+
+function toggleVoice() {
+    voiceEnabled = !voiceEnabled;
+    document.getElementById("voice_status").textContent = voiceEnabled ? "ON" : "OFF";
+
+    if (!voiceEnabled) {
+        window.speechSynthesis.cancel();
+    }
+}
+
+function createChart(ctxId, label, color) {
+    const ctx = document.getElementById(ctxId).getContext("2d");
+    chartConfig[ctxId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: color,
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            animation: false,
+            scales: {
+                y: { beginAtZero: false }
+            }
+        }
+    });
+}
+
+createChart("chartPanelVoltage", "Panel Voltage", "#00ffff");
+createChart("chartPanelCurrent", "Panel Current", "#facc15");
+createChart("chartBatteryVoltage", "Battery Voltage", "#22c55e");
+createChart("chartInverterTemp", "Inverter Temp", "#ef4444");
+createChart("chartLoadCurrent", "Load Current", "#8b5cf6");
+
+const ctxHist = document.getElementById("chartHistorical").getContext("2d");
+const chartHistorical = new Chart(ctxHist, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [
+            { label: "Panel Voltage", data: [], borderColor: "#00ffff", fill: false },
+            { label: "Panel Current", data: [], borderColor: "#facc15", fill: false },
+            { label: "Battery Voltage", data: [], borderColor: "#22c55e", fill: false },
+            { label: "Inverter Temp", data: [], borderColor: "#ef4444", fill: false },
+            { label: "Load Current", data: [], borderColor: "#8b5cf6", fill: false }
+        ]
+    },
+    options: {
+        responsive: true,
+        animation: false,
+        scales: {
+            y: { beginAtZero: false }
+        }
+    }
+});
+
+function setCardStatus(cardId, value, minSafe, maxSafe, minWarn, maxWarn) {
+    const card = document.getElementById(cardId);
+    card.classList.remove("safe", "warning", "danger");
+
+    if (value < minSafe || value > maxSafe) {
+        card.classList.add("danger");
+    } else if (value < minWarn || value > maxWarn) {
+        card.classList.add("warning");
+    } else {
+        card.classList.add("safe");
+    }
+}
+
+async function updateDashboard() {
+    try {
+        const res = await fetch("/latest");
+        const json = await res.json();
+
+        if (json.error) return;
+
+        const data = json.latest_data;
+        const pred = json.prediction;
+        const faultType = json.fault_label;
+        const hist = json.history;
+        const time = json.timestamp;
+        const health = json.health_score;
+        
+
+       
+      
+        document.getElementById("system_time").textContent = time;
+        document.getElementById("prediction_badge").textContent = pred.toUpperCase();
+        document.getElementById("fault_type").textContent = faultType;
+        document.getElementById("health_score").textContent = health + "%";
+
+        const alertEl = document.getElementById("alert");
+        if (faultType === "Normal Operation") {
+            alertEl.textContent = "✅ NORMAL OPERATION";
+            alertEl.className = "normal";
+
+            if (lastFaultSpoken !== "Normal Operation") {
+            speakAlert("System operating normally");
+            lastFaultSpoken = "Normal Operation";
+            }
+
+        } else {
+            alertEl.textContent = "🚨 FAULT: " + faultType;
+            alertEl.className = "fault";
+
+            if (lastFaultSpoken !== faultType) {
+            playAlarm();
+            speakAlert("Warning. " + faultType + " detected");
+            lastFaultSpoken = faultType;
+            }
+        }
+
+        document.getElementById("panel_voltage").textContent = data.panel_voltage;
+        document.getElementById("panel_current").textContent = data.panel_current;
+        document.getElementById("battery_voltage").textContent = data.battery_voltage;
+        document.getElementById("inverter_temp").textContent = data.inverter_temp;
+        document.getElementById("load_current").textContent = data.load_current;
+
+        setCardStatus("card_panel_voltage", data.panel_voltage, 48, 52, 46, 54);
+        setCardStatus("card_panel_current", data.panel_current, 4, 6, 3, 7);
+        setCardStatus("card_battery_voltage", data.battery_voltage, 48, 52, 46, 54);
+        setCardStatus("card_inverter_temp", data.inverter_temp, 25, 50, 20, 60);
+        setCardStatus("card_load_current", data.load_current, 2, 5, 1, 6);
+
+        const chartMap = {
+            panel_voltage: "chartPanelVoltage",
+            panel_current: "chartPanelCurrent",
+            battery_voltage: "chartBatteryVoltage",
+            inverter_temp: "chartInverterTemp",
+            load_current: "chartLoadCurrent"
+        };
+
+        Object.keys(chartMap).forEach(key => {
+            const chart = chartConfig[chartMap[key]];
+            chart.data.labels = hist[key].map((_, i) => i + 1);
+            chart.data.datasets[0].data = hist[key];
+            chart.update();
+        });
+
+        const labels = hist.panel_voltage.map((_, i) => i + 1);
+        chartHistorical.data.labels = labels;
+        chartHistorical.data.datasets[0].data = hist.panel_voltage;
+        chartHistorical.data.datasets[1].data = hist.panel_current;
+        chartHistorical.data.datasets[2].data = hist.battery_voltage;
+        chartHistorical.data.datasets[3].data = hist.inverter_temp;
+        chartHistorical.data.datasets[4].data = hist.load_current;
+        chartHistorical.update();
+
+    } catch (error) {
+        console.error("Dashboard update error:", error);
+    }
+}
+
+setInterval(updateDashboard, 2000);
+updateDashboard();
+</script>
+
+</body>
+</html>
